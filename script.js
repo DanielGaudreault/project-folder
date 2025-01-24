@@ -1,55 +1,37 @@
-function searchFiles() {
+function searchFile() {
     const fileInput = document.getElementById('fileInput');
     const results = document.getElementById('results');
     results.textContent = ''; // Clear previous results
 
     if (fileInput.files.length === 0) {
-        alert('Please select one or more files.');
+        alert('Please select a file.');
         return;
     }
 
-    const files = fileInput.files;
-    let allResults = [];
+    const file = fileInput.files[0];
+    const reader = new FileReader();
 
-    const processFile = (file) => {
-        return new Promise((resolve) => {
-            const reader = new FileReader();
+    reader.onload = function (event) {
+        const content = event.target.result;
 
-            reader.onload = function (event) {
-                const content = event.target.result;
-
-                if (file.type === 'application/pdf') {
-                    // Handle PDF files
-                    parsePDF(content).then(text => {
-                        const cycleTime = extractCycleTime(text);
-                        resolve({ fileName: file.name, cycleTime });
-                    });
-                } else {
-                    // Handle text files
-                    const cycleTime = extractCycleTime(content);
-                    resolve({ fileName: file.name, cycleTime });
-                }
-            };
-
-            if (file.type === 'application/pdf') {
-                reader.readAsArrayBuffer(file); // Read PDF as ArrayBuffer
-            } else {
-                reader.readAsText(file); // Read text files as text
-            }
-        });
-    };
-
-    const processAllFiles = async () => {
-        for (let i = 0; i < files.length; i++) {
-            const result = await processFile(files[i]);
-            allResults.push(result);
+        if (file.type === 'application/pdf') {
+            // Handle PDF files
+            parsePDF(content).then(text => {
+                const cycleTime = extractCycleTime(text);
+                displayResults(cycleTime);
+            });
+        } else {
+            // Handle text files
+            const cycleTime = extractCycleTime(content);
+            displayResults(cycleTime);
         }
-
-        // Display all results
-        displayResults(allResults);
     };
 
-    processAllFiles();
+    if (file.type === 'application/pdf') {
+        reader.readAsArrayBuffer(file); // Read PDF as ArrayBuffer
+    } else {
+        reader.readAsText(file); // Read text files as text
+    }
 }
 
 function extractCycleTime(text) {
@@ -65,20 +47,13 @@ function extractCycleTime(text) {
     return null; // Return null if no match is found
 }
 
-function displayResults(results) {
-    const resultsElement = document.getElementById('results');
-    let output = '';
-
-    results.forEach(result => {
-        output += `File: ${result.fileName}\n`;
-        if (result.cycleTime) {
-            output += `Cycle Time: ${result.cycleTime}\n\n`;
-        } else {
-            output += 'No instances of "TOTAL CYCLE TIME" found.\n\n';
-        }
-    });
-
-    resultsElement.textContent = output;
+function displayResults(cycleTime) {
+    const results = document.getElementById('results');
+    if (cycleTime) {
+        results.textContent = `Cycle Time: ${cycleTime}`;
+    } else {
+        results.textContent = 'No instances of "TOTAL CYCLE TIME" found.';
+    }
 }
 
 function parsePDF(data) {
