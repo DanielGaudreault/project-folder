@@ -17,12 +17,12 @@ function searchFile() {
         if (file.type === 'application/pdf') {
             // Handle PDF files
             parsePDF(content).then(text => {
-                const cycleTimeLine = extractCycleTimeLine(text);
+                const cycleTimeLine = findCycleTimeLine(text);
                 displayResults(cycleTimeLine);
             });
         } else {
             // Handle text files
-            const cycleTimeLine = extractCycleTimeLine(content);
+            const cycleTimeLine = findCycleTimeLine(content);
             displayResults(cycleTimeLine);
         }
     };
@@ -34,11 +34,11 @@ function searchFile() {
     }
 }
 
-function extractCycleTimeLine(text) {
+function findCycleTimeLine(text) {
     const lines = text.split('\n'); // Split text into lines
     for (const line of lines) {
         if (line.includes("TOTAL CYCLE TIME")) {
-            return line.trim(); // Return the full line where the phrase appears
+            return line.trim(); // Return the exact line where the phrase appears
         }
     }
     return null; // Return null if no match is found
@@ -47,7 +47,7 @@ function extractCycleTimeLine(text) {
 function displayResults(cycleTimeLine) {
     const results = document.getElementById('results');
     if (cycleTimeLine) {
-        results.textContent = `Full Line: ${cycleTimeLine}`;
+        results.textContent = `TOTAL CYCLE TIME Line: ${cycleTimeLine}`;
     } else {
         results.textContent = 'No instances of "TOTAL CYCLE TIME" found.';
     }
