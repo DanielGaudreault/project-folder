@@ -2,11 +2,11 @@ body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;
     margin: 0;
-    padding: 0;
+    padding: 20px;
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    min-height: 100vh;
 }
 
 .container {
@@ -15,7 +15,7 @@ body {
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     text-align: center;
-    max-width: 500px;
+    max-width: 600px;
     width: 100%;
 }
 
@@ -48,4 +48,5 @@ pre {
     text-align: left;
     max-height: 300px;
     overflow-y: auto;
+    white-space: pre-wrap;
 }
