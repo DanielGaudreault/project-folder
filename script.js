@@ -66,10 +66,11 @@ function parsePDF(data) {
             const fetchPage = (pageNum) => {
                 return pdf.getPage(pageNum).then(page => {
                     return page.getTextContent().then(textContent => {
+                        let pageText = '';
                         textContent.items.forEach(item => {
-                            text += item.str + ' ';
+                            pageText += item.str + ' ';
                         });
-                        text += '\n'; // Add newline after each page
+                        text += pageText + '\n'; // Add newline after each page
                     });
                 });
             };
