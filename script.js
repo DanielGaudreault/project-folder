@@ -17,30 +17,34 @@ function searchFile() {
         if (file.type === 'application/pdf') {
             // Handle PDF files
             parsePDF(content).then(text => {
-                searchText(text);
+                const cycleTime = extractCycleTime(text);
+                displayResults(cycleTime);
             });
         } else {
             // Handle text files
-            searchText(content);
+            const cycleTime = extractCycleTime(content);
+            displayResults(cycleTime);
         }
     };
 
-    reader.readAsBinaryString(file); // Read file as binary string
+    if (file.type === 'application/pdf') {
+        reader.readAsArrayBuffer(file); // Read PDF as ArrayBuffer
+    } else {
+        reader.readAsText(file); // Read text files as text
+    }
 }
 
-function searchText(text) {
+function extractCycleTime(text) {
+    const regex = /TOTAL CYCLE TIME[:]?\s*([\d:.]+)/i; // Matches "TOTAL CYCLE TIME" and extracts the time
+    const match = text.match(regex);
+    return match ? match[1] : null;
+}
+
+function displayResults(cycleTime) {
     const results = document.getElementById('results');
-    const lines = text.split('\n');
-    let found = false;
-
-    lines.forEach((line, index) => {
-        if (line.includes("TOTAL CYCLE TIME")) {
-            results.textContent += `Line ${index + 1}: ${line}\n`;
-            found = true;
-        }
-    });
-
-    if (!found) {
+    if (cycleTime) {
+        results.textContent = `TOTAL CYCLE TIME: ${cycleTime}`;
+    } else {
         results.textContent = 'No instances of "TOTAL CYCLE TIME" found.';
     }
 }
@@ -59,8 +63,9 @@ function parsePDF(data) {
                 return pdf.getPage(pageNum).then(page => {
                     return page.getTextContent().then(textContent => {
                         textContent.items.forEach(item => {
-                            text += item.str + '\n';
+                            text += item.str + ' ';
                         });
+                        text += '\n'; // Add newline after each page
                     });
                 });
             };
