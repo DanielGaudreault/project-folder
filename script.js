@@ -17,13 +17,13 @@ function searchFile() {
         if (file.type === 'application/pdf') {
             // Handle PDF files
             parsePDF(content).then(text => {
-                const cycleTime = extractCycleTime(text);
-                displayResults(cycleTime);
+                const cycleTimeLine = extractCycleTimeLine(text);
+                displayResults(cycleTimeLine);
             });
         } else {
             // Handle text files
-            const cycleTime = extractCycleTime(content);
-            displayResults(cycleTime);
+            const cycleTimeLine = extractCycleTimeLine(content);
+            displayResults(cycleTimeLine);
         }
     };
 
@@ -34,16 +34,20 @@ function searchFile() {
     }
 }
 
-function extractCycleTime(text) {
-    const regex = /TOTAL CYCLE TIME[:]?\s*([\d:.]+)/i; // Matches "TOTAL CYCLE TIME" and extracts the time
-    const match = text.match(regex);
-    return match ? match[1] : null;
+function extractCycleTimeLine(text) {
+    const lines = text.split('\n'); // Split text into lines
+    for (const line of lines) {
+        if (line.includes("TOTAL CYCLE TIME")) {
+            return line.trim(); // Return the full line where the phrase appears
+        }
+    }
+    return null; // Return null if no match is found
 }
 
-function displayResults(cycleTime) {
+function displayResults(cycleTimeLine) {
     const results = document.getElementById('results');
-    if (cycleTime) {
-        results.textContent = `TOTAL CYCLE TIME: ${cycleTime}`;
+    if (cycleTimeLine) {
+        results.textContent = `Full Line: ${cycleTimeLine}`;
     } else {
         results.textContent = 'No instances of "TOTAL CYCLE TIME" found.';
     }
