@@ -46,7 +46,7 @@ function searchFile() {
             await processFile(files[i], i);
         }
 
-        // Display results
+        // Display results for all files
         results.textContent = resultsArray.map(result => 
             `File: ${result.fileName}\nCycle Time: ${result.cycleTime || 'No instances of "TOTAL CYCLE TIME" found.'}\n\n`
         ).join('');
