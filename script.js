@@ -23,12 +23,17 @@ function searchFile() {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = function (event) {
-                const data = new Uint8Array(event.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const sheetName = workbook.SheetNames[0]; // Assuming the first sheet
-                const sheet = workbook.Sheets[sheetName];
-                excelData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                resolve(workbook);
+                try {
+                    const data = new Uint8Array(event.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0]; // Assuming the first sheet
+                    const sheet = workbook.Sheets[sheetName];
+                    excelData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    resolve(workbook);
+                } catch (error) {
+                    console.error('Error parsing Excel:', error);
+                    reject(error);
+                }
             };
             reader.onerror = reject;
             reader.readAsArrayBuffer(file);
@@ -44,6 +49,7 @@ function searchFile() {
                     const content = event.target.result;
                     if (file.type === 'application/pdf') {
                         parsePDF(content).then(text => {
+                            console.log(`Text extracted from ${file.name}:`, text);
                             const cycleTime = extractCycleTime(text);
                             if (cycleTime === null) {
                                 console.warn(`No cycle time found in ${file.name}`);
@@ -76,8 +82,15 @@ function searchFile() {
 
     const processAllFiles = async () => {
         results.textContent = 'Processing files...';
-        // Wait for Excel parsing to complete
-        const workbook = await parseExcel(excelInput.files[0]);
+        let workbook;
+        try {
+            workbook = await parseExcel(excelInput.files[0]);
+        } catch (error) {
+            results.textContent = `Error parsing Excel file: ${error.message}`;
+            return;
+        }
+
+        console.log('Excel Data Before Update:', excelData);
 
         // Process each file
         for (let i = 0; i < files.length; i++) {
@@ -96,6 +109,8 @@ function searchFile() {
                 excelData[rowIndex][1] = result.cycleTime || 'No instances of "TOTAL CYCLE TIME" found.';
             }
         });
+
+        console.log('Excel Data After Update:', excelData);
 
         // Update the sheet with modified data
         const updatedSheet = XLSX.utils.aoa_to_sheet(excelData);
@@ -121,11 +136,13 @@ function searchFile() {
 }
 
 function extractCycleTime(text) {
-    const lines = text.split('\n'); // Split text into lines
+    const lines = text ? text.split('\n') : []; // Split text into lines
     for (const line of lines) {
         if (line.includes("TOTAL CYCLE TIME")) {
+            console.log('Line with cycle time:', line);
             const regex = /(\d+ HOURS?, \d+ MINUTES?, \d+ SECONDS?)/i;
             const match = line.match(regex);
+            console.log('Match:', match);
             return match ? match[0] : null; // Return the matched time or null
         }
     }
@@ -141,6 +158,7 @@ function parsePDF(data) {
         loadingTask.promise.then(pdf => {
             let text = '';
             const numPages = pdf.numPages;
+            let pagesRead = 0;
 
             const fetchPage = (pageNum) => {
                 return pdf.getPage(pageNum).then(page => {
@@ -150,6 +168,10 @@ function parsePDF(data) {
                             pageText += item.str + ' ';
                         });
                         text += pageText + '\n'; // Add newline after each page
+                        pagesRead++;
+                        if (pagesRead === numPages) {
+                            resolve(text);
+                        }
                     });
                 });
             };
@@ -162,7 +184,6 @@ function parsePDF(data) {
                         console.error(`Error fetching page ${i}:`, error);
                     }
                 }
-                resolve(text);
             };
 
             fetchAllPages();
