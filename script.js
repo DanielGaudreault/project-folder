@@ -1,8 +1,6 @@
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
-<script>
 function searchFile() {
     const fileInput = document.getElementById('fileInput');
-    const excelInput = document.getElementById('excelInput'); // Input for the Excel file
+    const excelInput = document.getElementById('excelInput');
     const results = document.getElementById('results');
     results.textContent = ''; // Clear previous results
 
@@ -42,46 +40,59 @@ function searchFile() {
             const reader = new FileReader();
 
             reader.onload = function (event) {
-                const content = event.target.result;
-
-                if (file.type === 'application/pdf') {
-                    // Handle PDF files
-                    parsePDF(content).then(text => {
-                        const cycleTime = extractCycleTime(text);
+                try {
+                    const content = event.target.result;
+                    if (file.type === 'application/pdf') {
+                        parsePDF(content).then(text => {
+                            const cycleTime = extractCycleTime(text);
+                            if (cycleTime === null) {
+                                console.warn(`No cycle time found in ${file.name}`);
+                            }
+                            resultsArray[index] = { fileName: file.name, cycleTime };
+                            resolve();
+                        }).catch(reject);
+                    } else if (file.type === 'text/plain') {
+                        const cycleTime = extractCycleTime(content);
                         resultsArray[index] = { fileName: file.name, cycleTime };
                         resolve();
-                    }).catch(reject);
-                } else {
-                    // Handle text files
-                    const cycleTime = extractCycleTime(content);
-                    resultsArray[index] = { fileName: file.name, cycleTime };
-                    resolve();
+                    } else {
+                        reject(new Error('Unsupported file type'));
+                    }
+                } catch (error) {
+                    console.error(`Error processing file ${file.name}:`, error);
+                    reject(error);
                 }
             };
 
             if (file.type === 'application/pdf') {
-                reader.readAsArrayBuffer(file); // Read PDF as ArrayBuffer
+                reader.readAsArrayBuffer(file);
+            } else if (file.type === 'text/plain') {
+                reader.readAsText(file);
             } else {
-                reader.readAsText(file); // Read text files as text
+                reject(new Error('Unsupported file type'));
             }
         });
     };
 
     const processAllFiles = async () => {
+        results.textContent = 'Processing files...';
         // Wait for Excel parsing to complete
         const workbook = await parseExcel(excelInput.files[0]);
 
         // Process each file
         for (let i = 0; i < files.length; i++) {
-            await processFile(files[i], i);
+            try {
+                await processFile(files[i], i);
+            } catch (error) {
+                console.error('Error:', error);
+                results.textContent += `\nError processing ${files[i].name}: ${error.message}`;
+            }
         }
 
         // Update Excel with cycle time based on filenames
         resultsArray.forEach(result => {
-            // Search for the row in the Excel data that matches the file name
-            const rowIndex = excelData.findIndex(row => row[0] && row[0].toString() === result.fileName); // Assuming the file name is in the first column
+            const rowIndex = excelData.findIndex(row => row[0] && row[0].toString() === result.fileName);
             if (rowIndex !== -1) {
-                // Update the cycle time in the second column (you can modify the column index if needed)
                 excelData[rowIndex][1] = result.cycleTime || 'No instances of "TOTAL CYCLE TIME" found.';
             }
         });
@@ -99,11 +110,13 @@ function searchFile() {
         link.href = URL.createObjectURL(blob);
         link.download = 'updated_file.xlsx';
         link.click();
+
+        results.textContent = 'Processing complete. Download started.';
     };
 
     processAllFiles().catch(error => {
         console.error('Error processing files:', error);
-        results.textContent = 'An error occurred while processing the files.';
+        results.textContent = 'An error occurred while processing the files: ' + error.message;
     });
 }
 
@@ -111,7 +124,6 @@ function extractCycleTime(text) {
     const lines = text.split('\n'); // Split text into lines
     for (const line of lines) {
         if (line.includes("TOTAL CYCLE TIME")) {
-            // Use regex to extract the time part (e.g., "0 HOURS, 4 MINUTES, 16 SECONDS")
             const regex = /(\d+ HOURS?, \d+ MINUTES?, \d+ SECONDS?)/i;
             const match = line.match(regex);
             return match ? match[0] : null; // Return the matched time or null
@@ -144,7 +156,11 @@ function parsePDF(data) {
 
             const fetchAllPages = async () => {
                 for (let i = 1; i <= numPages; i++) {
-                    await fetchPage(i);
+                    try {
+                        await fetchPage(i);
+                    } catch (error) {
+                        console.error(`Error fetching page ${i}:`, error);
+                    }
                 }
                 resolve(text);
             };
@@ -153,4 +169,3 @@ function parsePDF(data) {
         }).catch(reject);
     });
 }
-</script>
