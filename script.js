@@ -51,9 +51,6 @@ function searchFile() {
                         parsePDF(content).then(text => {
                             console.log(`Text extracted from ${file.name}:`, text);
                             const cycleTime = extractCycleTime(text);
-                            if (cycleTime === null) {
-                                console.warn(`No cycle time found in ${file.name}`);
-                            }
                             resultsArray[index] = { fileName: file.name, cycleTime };
                             resolve();
                         }).catch(reject);
@@ -102,10 +99,18 @@ function searchFile() {
             }
         }
 
-        // Update Excel with cycle time based on filenames
+        // Update or add new rows to Excel based on filenames
+        let newRowNumber = excelData.length + 1; // Start numbering from where existing data ends
         resultsArray.forEach(result => {
             const rowIndex = excelData.findIndex(row => row[0] && row[0].toString() === result.fileName);
-            if (rowIndex !== -1) {
+            if (rowIndex === -1) {
+                // If no match, add a new row
+                const newRow = [result.fileName, result.cycleTime || 'No instances of "TOTAL CYCLE TIME" found.'];
+                excelData.push(newRow);
+                console.log(`Added new row for ${result.fileName} with number ${newRowNumber}`);
+                newRowNumber++;
+            } else {
+                // Update existing row
                 excelData[rowIndex][1] = result.cycleTime || 'No instances of "TOTAL CYCLE TIME" found.';
             }
         });
