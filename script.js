@@ -1,5 +1,8 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+<script>
 function searchFile() {
     const fileInput = document.getElementById('fileInput');
+    const excelInput = document.getElementById('excelInput'); // Input for the Excel file
     const results = document.getElementById('results');
     results.textContent = ''; // Clear previous results
 
@@ -8,8 +11,31 @@ function searchFile() {
         return;
     }
 
+    if (!excelInput.files.length) {
+        alert('Please select an Excel file.');
+        return;
+    }
+
     const files = fileInput.files;
     const resultsArray = [];
+    let excelData = [];
+
+    // Parse the Excel file
+    const parseExcel = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0]; // Assuming the first sheet
+                const sheet = workbook.Sheets[sheetName];
+                excelData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                resolve(workbook);
+            };
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(file);
+        });
+    };
 
     const processFile = (file, index) => {
         return new Promise((resolve, reject) => {
@@ -42,14 +68,37 @@ function searchFile() {
     };
 
     const processAllFiles = async () => {
+        // Wait for Excel parsing to complete
+        const workbook = await parseExcel(excelInput.files[0]);
+
+        // Process each file
         for (let i = 0; i < files.length; i++) {
             await processFile(files[i], i);
         }
 
-        // Display results for all files
-        results.textContent = resultsArray.map(result => 
-            `File: ${result.fileName}\nCycle Time: ${result.cycleTime || 'No instances of "TOTAL CYCLE TIME" found.'}\n\n`
-        ).join('');
+        // Update Excel with cycle time based on filenames
+        resultsArray.forEach(result => {
+            // Search for the row in the Excel data that matches the file name
+            const rowIndex = excelData.findIndex(row => row[0] && row[0].toString() === result.fileName); // Assuming the file name is in the first column
+            if (rowIndex !== -1) {
+                // Update the cycle time in the second column (you can modify the column index if needed)
+                excelData[rowIndex][1] = result.cycleTime || 'No instances of "TOTAL CYCLE TIME" found.';
+            }
+        });
+
+        // Update the sheet with modified data
+        const updatedSheet = XLSX.utils.aoa_to_sheet(excelData);
+        workbook.Sheets[workbook.SheetNames[0]] = updatedSheet;
+
+        // Export the updated workbook
+        const updatedExcelFile = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+
+        // Trigger the download of the updated Excel file
+        const blob = new Blob([updatedExcelFile], { type: 'application/octet-stream' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'updated_file.xlsx';
+        link.click();
     };
 
     processAllFiles().catch(error => {
@@ -104,3 +153,4 @@ function parsePDF(data) {
         }).catch(reject);
     });
 }
+</script>
